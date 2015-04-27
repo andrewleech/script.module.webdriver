@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.service.chromedriver"
+       name="Chrome Driver"
+       version="1.0.0"
+       provider-name="corona">
+  <requires>
+    <import addon="xbmc.python" version="2.18.0" />
+    <import addon="script.module.futures" version="2.2.0" />
+    <!--<import addon="script.module.pyopenssl" version="1.0.0"/>-->
+    <import addon="script.module.requests" version="2.4.3"/>
+    <import addon="script.module.pydevd" version="2.1.0" optional="true"/>
+  </requires>
+    
+  <extension point="xbmc.service" library="service.py" start="login" />
+
+  <extension point="xbmc.python.module" library="lib" />
+
+  <extension point="xbmc.addon.metadata">
+    <platform>all</platform>
+    <summary>Plugin to provide background communication with chrome</summary>
+    <description>Plugin to provide background communication with chrome. See https://github.com/andrewleech/plugin.service.chromedriver for more defails</description>
+    <license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
+    <source>https://github.com/andrewleech/plugin.service.chromedriver</source>
+  </extension>
+</addon>
