@@ -3,7 +3,6 @@ __author__ = 'corona'
 import os
 import sys
 import xbmcgui
-import xbmcaddon
 from selenium.webdriver.common.keys import Keys
 import xbmc
 sleep = xbmc.sleep
@@ -45,8 +44,8 @@ class WindowXMLDialogActions(xbmcgui.WindowXMLDialog):
 
 class window(object):
     def __init__(self, browser, jsTarget):
-        addon = xbmcaddon.Addon()
-        self.window = WindowXMLDialogActions('window.xml', addon.getAddonInfo('path'), 'default', parent=self)
+        chromedriver_plugin_folder = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..',))
+        self.window = WindowXMLDialogActions('window.xml', chromedriver_plugin_folder, 'default', parent=self)
         self.browser = browser
         self.jsTarget = jsTarget
         self.keymap = DEFAULT_KEYMAP
@@ -60,11 +59,14 @@ class window(object):
         while not stopEvt.is_set():
             keys = self.browser.getKeystrokes()
 #            for key in keys:
-            sender.send_key(keys)
+            if keys:
+                sender.send_key(keys)
  #               action = KEY_ACTION_MAP.get(key.get('name', None), None)
   #              if action:
    #                 self.onAction(action)
-            sleep(250)
+                sleep(25)
+            else:
+                sleep(250)
 
     def doModal(self):
         import threading

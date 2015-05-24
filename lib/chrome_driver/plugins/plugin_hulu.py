@@ -12,7 +12,6 @@ class PLUGIN(object):
     def __init__(self, server):
         self.menus = {}
         self.server = server
-        self.browser = self.server.browser
 
     def poll(self):
         pass
@@ -23,11 +22,11 @@ class PLUGIN(object):
     def login(self, login, password, cookiefile = None):
         login_url = "https://www.hulu.com/about"
 
-        if 'hulu.com' not in self.browser.current_url:
-            self.browser.get(login_url)
+        if 'hulu.com' not in self.server.browser.current_url:
+            self.server.browser.get(login_url)
 
         def _is_logged_in():
-            return len(self.browser.find_elements_by_class_name('logout')) > 0
+            return len(self.server.browser.find_elements_by_class_name('logout')) > 0
 
         status = _is_logged_in()
         if not status:
@@ -36,25 +35,25 @@ class PLUGIN(object):
                     with open(cookiefile, 'r') as fp:
                         cookies = json.load(fp)
                         for cookie in cookies:
-                            self.browser.add_cookie(cookie)
-                        self.browser.get(login_url)
+                            self.server.browser.add_cookie(cookie)
+                        self.server.browser.get(login_url)
                         status = _is_logged_in()
 
                 if not status:
-                    log_in_btn = self.browser.find_element_by_link_text("LOG IN")
+                    log_in_btn = self.server.browser.find_element_by_link_text("LOG IN")
                     log_in_btn.click()
                     try:
-                        dummy_login_input = self.browser.find_elements_by_name('dummy_login').pop(0)
+                        dummy_login_input = self.server.browser.find_elements_by_name('dummy_login').pop(0)
                         dummy_login_input.click()
                     except IndexError as ex: pass
-                    login_input = self.browser.find_elements_by_id('login').pop(0)
-                    password_input = self.browser.find_elements_by_id('password').pop(0)
+                    login_input = self.server.browser.find_elements_by_id('login').pop(0)
+                    password_input = self.server.browser.find_elements_by_id('password').pop(0)
                     login_input.click()
                     login_input.send_keys(login)
                     password_input.send_keys(password)
                     password_input.send_keys(Keys.ENTER)
 
-                    self.browser.get(login_url)
+                    self.server.browser.get(login_url)
                     status = _is_logged_in()
 
                 if status and cookiefile:
@@ -62,7 +61,7 @@ class PLUGIN(object):
                         os.makedirs(os.path.dirname(cookiefile))
                     except OSError: pass
                     with open(cookiefile, 'w') as fp:
-                        json.dump(self.browser.get_cookies(), fp)
+                        json.dump(self.server.browser.get_cookies(), fp)
             except IndexError as ex:
                 status = ex
             except Exception as ex:
@@ -72,5 +71,6 @@ class PLUGIN(object):
     def getMenus(self):
         browser = self.server.browser
         res = self.server.getNoJs(self.BASE_MENU_URL)
+        return res
 
 

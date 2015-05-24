@@ -15,22 +15,24 @@ from concurrent import futures
 import requests
 import _include as includes
 
-
+addonUserDataFolder = None
 try:
-    import xbmc
+    import xbmc, xbmcaddon
+
+    addon = xbmcaddon.Addon()
+    addonID = addon.getAddonInfo('id')
+    addonDir = xbmc.translatePath(addon.getAddonInfo('path'))
+    addonUserDataFolder = xbmc.translatePath("special://profile/addon_data/"+addonID)
+
     log = lambda text: xbmc.log(text, level=xbmc.LOGDEBUG)
 except ImportError:
     log = sys.stdout
 
-trace_on = False
 try:
-    lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))
-    if lib_path not in sys.path:
-        sys.path.append(lib_path)
     resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..'))
 
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options as ChromeOptions
+    from chrome_driver.selenium import webdriver
+    from chrome_driver.selenium.webdriver.chrome.options import Options as ChromeOptions
 
     import client
     import plugins
@@ -45,6 +47,31 @@ try:
         chrome_driver_path= os.path.join(os.path.dirname(__file__),'bin','linux')
 
     os.environ["PATH"] += os.pathsep + chrome_driver_path
+
+    try:
+        check_output = subprocess.check_output
+    except AttributeError:
+        def check_output(*popenargs, **kwargs):
+            r"""Run command with arguments and return its output as a byte string.
+
+            Backported from Python 2.7 as it's implemented as pure python on stdlib.
+
+            >>> check_output(['/usr/bin/python', '--version'])
+            Python 2.6.2
+            """
+            process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+            output, unused_err = process.communicate()
+            retcode = process.poll()
+            if retcode:
+                cmd = kwargs.get("args")
+                if cmd is None:
+                    cmd = popenargs[0]
+                error = subprocess.CalledProcessError(retcode, cmd)
+                error.output = output
+                raise error
+            return output
+
+        subprocess.check_output = check_output
 
     ## Running a get/post through ajax avoids the browser parsing the returning code, meaning this is more like a python request
     get_js = """
@@ -80,7 +107,6 @@ try:
         req.send(null);
     }
     """
-
 
     getimg_js = """
     var done = arguments[0];
@@ -151,26 +177,35 @@ try:
 
     class ChromeFunctions:
         def __init__(self):
+
             #browser = webdriver.Chrome('/path/to/chromedriver')  # Optional argument, if not specified will search path.
-            chrome_options = ChromeOptions()
-            chrome_options.add_argument("disable-web-security") # We can't do the ajax get/post without this option, thanks to CORS
+            self._chrome_options = ChromeOptions()
+            self._chrome_options.add_argument("disable-web-security") # We can't do the ajax get/post without this option, thanks to CORS
             #chrome_options.add_argument('--load-and-launch-app="%s"' % os.path.join(os.path.dirname(__file__), 'kodi-chrome-app'))
-            chrome_options.add_argument('--kiosk')
+            self._chrome_options.add_argument('--kiosk')
+
+            if addonUserDataFolder:
+                self._chrome_options.add_argument('--user-data-dir=' + os.path.join(addonUserDataFolder, "chrome_userdata"))
+
             self.browser_lock = threading.Lock()
-            self._first_open = True
-            self.browser = webdriver.Chrome(chrome_options=chrome_options, port=47238)
-            self.browser.get("file://%s/black.htm" % resources_path.replace('\\','/'))
-            self.handle_first_open()
+            self._browser = None
             self.plugins = {}
             self.background = futures.ThreadPoolExecutor(max_workers=1)
 
-
             self.register_plugins()
 
-        def handle_first_open(self):
-            if self._first_open:
-                self._first_open = False
+        @property
+        def browser(self):
+            """
+            This will load chrome and webdriver the first time it's hit, then
+            return the cached instance forever after.
+            :return: webdriver.Chrome
+            """
+            if self._browser is None:
+                self._browser = webdriver.Chrome(chrome_options=self._chrome_options, port=47238)
+                self._browser.get("file://%s/black.htm" % resources_path.replace('\\','/'))
                 client.ChromeDriverClient.send_chrome_to_back()
+            return self._browser
 
         def register_plugins(self):
             self.plugins = {}
@@ -192,6 +227,8 @@ try:
             return msg
 
         def pid(self):
+            if platform.system() == 'Windows':
+                raise NotImplementedError("Need to add new method to find parent pid on windows, psutil module perhaps?")
             ps = subprocess.check_output(["ps","-xf"])
             pid = None
             for line in ps.splitlines()[1:]:
@@ -210,65 +247,55 @@ try:
             target = '/html/body' if target is None else target
             with self.browser_lock:
                 result = self.browser.find_elements_by_xpath(target)[0].send_keys(key)
-            self.handle_first_open()
             return result
 
         def navigateBack(self):
             with self.browser_lock:
                 result =  self.browser.back()
-            self.handle_first_open()
             return result
 
         def get(self, url):
             with self.browser_lock:
                 result =  self.browser.get(url)
-            self.handle_first_open()
             return result
 
         def post(self, url, data):
             with self.browser_lock:
                 result =  self.browser.post(url, data)
-            self.handle_first_open()
             return result
 
         def getNoJs(self, url):
             with self.browser_lock:
                 self.browser.set_script_timeout(5)
                 result = self.browser.execute_script(get_js.format(url))
-            self.handle_first_open()
             return result
 
         def getMultNoJs(self, urls):
             with self.browser_lock:
                 self.browser.set_script_timeout(5)
                 result =  self.browser.execute_script(get_multi_js, urls)
-            self.handle_first_open()
             return result
 
         def postNoJs(self, url, data):
             with self.browser_lock:
                 self.browser.set_script_timeout(5)
                 result =  self.browser.execute_script(post_js.format(url, data))
-            self.handle_first_open()
             return result
 
         def getCookies(self):
             with self.browser_lock:
                 result =  self.browser.get_cookies()
-            self.handle_first_open()
             return result
 
         def setCookies(self, cookies):
             with self.browser_lock:
                 result =  self.browser.add_cookie(cookies)
-            self.handle_first_open()
             return result
 
         def startMonitoringKeystrokes(self):
             with self.browser_lock:
                 self.browser.set_script_timeout(5)
                 result = self.browser.execute_script(start_watching_keys_js)
-            self.handle_first_open()
             return result
 
         def getKeystrokes(self):
@@ -277,7 +304,6 @@ try:
                 keys = self.browser.execute_script(get_keys_js)
             for key in keys:
                 key['name'] = keycodeToKeyname.get(key['keyCode'], None)
-            self.handle_first_open()
             return keys
 
         def downloadImage(self, url_filepaths, background):
@@ -298,7 +324,6 @@ try:
                             img = base64.b64decode(link)
                             with open(filepath, 'wb') as filehandle:
                                 filehandle.write(img)
-                            self.handle_first_open()
                         else:
                             response = requests.get(url, stream=True)
                             if response.status_code == requests.codes.ok:
@@ -325,12 +350,11 @@ try:
 
             end = time.time()
             print "downloadImage: %0.2f" % (end-start)
-            self.handle_first_open()
 
     class ChromeServer(object):
         def     __init__(self, port = includes.port):
             self._port = port
-            self.server = SimpleJSONRPCServer(('127.0.0.1', self._port))
+            self.server = SimpleJSONRPCServer(('127.0.0.1', self._port), logRequests=False)
             self.chromefunctions = ChromeFunctions()
             self.server.register_instance(self.chromefunctions)
             self.started = False

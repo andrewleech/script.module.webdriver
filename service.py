@@ -7,36 +7,27 @@ except ImportError:
 
 trace_on = False
 try:
-    # try:
-    #     __import__("pydevd").settrace('192.168.0.16', port=51384, stdoutToServer=True, stderrToServer=True)
-    #     trace_on = True
-    # except BaseException as ex: pass
+    try:
+        __import__("pydevd").settrace('192.168.0.16', port=51384, stdoutToServer=True, stderrToServer=True)
+        trace_on = True
+    except BaseException as ex: pass
 
     import os
     import sys
     import threading
 
-    libpath = os.path.join(os.path.dirname(__file__), 'lib')
-    if libpath not in sys.path:
-        sys.path.append(libpath)
+    lib_path = os.path.join(os.path.dirname(__file__), 'lib')
+    if lib_path not in sys.path:
+        sys.path.append(lib_path)
+    chromedriver_path = os.path.join(os.path.dirname(__file__), 'lib', 'chrome_driver')
+    if chromedriver_path not in sys.path:
+        sys.path.append(chromedriver_path)
 
     from lib.chrome_driver import server
 
-    def service_monitor(driver):
-        monitor = xbmc.Monitor()
-        while True:
-            # We need to service the shutdown check and exit the script when asked within 5 seconds or risk getting killed
+    # def monitor_thread():
+    #     monitor = xbmc.Monitor()
 
-            # Sleep/wait for abort for 0.1 seconds
-            if monitor.waitForAbort(0.05):
-                # Abort was requested while waiting. We should exit
-                break
-
-            # Service jsonrpc requests
-            driver.service(1)
-
-        log("ChromeDriver service shutting down")
-        driver.shutdown()
 
     log("ChromeDriver service starting up")
     driver = server.ChromeServer()
@@ -46,8 +37,16 @@ try:
     #monthread.daemon = True
     #monthread.start()
 
-    #driver.run()
-    service_monitor(driver)
+    shutdown_thread = threading.Thread(target=driver.shutdown)
+    shutdown_thread.daemon = True
+
+    # We need to service the shutdown check and exit the script when asked within 5 seconds or risk getting killed
+    while not xbmc.abortRequested:
+        # Service jsonrpc requests
+        driver.service(1)
+
+    log("ChromeDriver service shutting down")
+    shutdown_thread.start()
 
 finally:
     if trace_on:

@@ -13,13 +13,41 @@ try:
 except ImportError:
     sleep = time.sleep
 
-chrome_driver_path= os.path.join(os.path.dirname(__file__))
-sys.path.append(chrome_driver_path)
-# from selenium import webdriver
-
 BASE_MENU_URL = "http://m.hulu.com/menu/hd_main_menu?show_id=0&dp_id=huludesktop&package_id=2&page=1"
 
+lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if lib_path not in sys.path:
+    sys.path.append(lib_path)
+chromedriver_path = os.path.join(os.path.dirname(__file__))
+if chromedriver_path not in sys.path:
+    sys.path.append(chromedriver_path)
+
 import jsonrpclib
+
+try:
+    check_output = subprocess.check_output
+except AttributeError:
+    def check_output(*popenargs, **kwargs):
+        r"""Run command with arguments and return its output as a byte string.
+
+        Backported from Python 2.7 as it's implemented as pure python on stdlib.
+
+        >>> check_output(['/usr/bin/python', '--version'])
+        Python 2.6.2
+        """
+        process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+        output, unused_err = process.communicate()
+        retcode = process.poll()
+        if retcode:
+            cmd = kwargs.get("args")
+            if cmd is None:
+                cmd = popenargs[0]
+            error = subprocess.CalledProcessError(retcode, cmd)
+            error.output = output
+            raise error
+        return output
+
+    subprocess.check_output = check_output
 
 osOSX = sys.platform.startswith('darwin')
 osLinux = sys.platform.startswith('linux')
@@ -55,9 +83,9 @@ class ChromeDriverClient(jsonrpclib.Server):
                 name = ""
                 try:
                     # xprop -id $(xprop -root 32x '\t$0' _NET_ACTIVE_WINDOW | cut -f 2) _NET_WM_NAME
-                    current_window_id = subprocess.check_output(['xprop', '-root', '32x', '\'\t$0\'', '_NET_ACTIVE_WINDOW'])
+                    current_window_id = check_output(['xprop', '-root', '32x', '\'\t$0\'', '_NET_ACTIVE_WINDOW'])
                     current_window_id = current_window_id.strip("'").split()[1]
-                    current_window_name = subprocess.check_output(['xprop', '-id', current_window_id, "WM_NAME"])
+                    current_window_name = check_output(['xprop', '-id', current_window_id, "WM_NAME"])
                     if "not found" not in current_window_name and "failed request" not in current_window_name:
                         current_window_name = current_window_name.strip().split(" = ")[1].strip('"')
                         name = current_window_name
@@ -67,12 +95,12 @@ class ChromeDriverClient(jsonrpclib.Server):
 
             def findWid():
                 wid = None
-                match = re.compile("(0x[0-9A-Fa-f]+)").findall(subprocess.check_output(['xprop','-root','_NET_CLIENT_LIST']))
+                match = re.compile("(0x[0-9A-Fa-f]+)").findall(check_output(['xprop','-root','_NET_CLIENT_LIST']))
                 if match:
                     for id in match:
                         try:
-                            wpid = subprocess.check_output(['xprop','-id',id,'_NET_WM_PID'])
-                            wname = subprocess.check_output(['xprop','-id',id,'WM_NAME'])
+                            wpid = check_output(['xprop','-id',id,'_NET_WM_PID'])
+                            wname = check_output(['xprop','-id',id,'WM_NAME'])
                             if str(pid) in wpid:
                                 wid = id
                         except (OSError, subprocess.CalledProcessError): pass
@@ -81,7 +109,7 @@ class ChromeDriverClient(jsonrpclib.Server):
             try:
                 timeout = time.time() + 10
                 while time.time() < timeout:# and "chrome" not in currentActiveWindowLinux().lower():
-                    #windows = subprocess.check_output(['wmctrl', '-l'])
+                    #windows = check_output(['wmctrl', '-l'])
                     #if "Google Chrome" in windows:
                     wid = findWid()
                     if wid:
