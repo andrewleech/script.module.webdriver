@@ -23,7 +23,7 @@ try:
     if chromedriver_path not in sys.path:
         sys.path.append(chromedriver_path)
 
-    from lib.chrome_driver import server
+    from lib.webdriver import server
 
     # def monitor_thread():
     #     monitor = xbmc.Monitor()
