@@ -45,7 +45,7 @@ class WindowXMLDialogActions(xbmcgui.WindowXMLDialog):
 class window(object):
     def __init__(self, browser, jsTarget):
         chromedriver_plugin_folder = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..',))
-        self.window = WindowXMLDialogActions('window.xml', chromedriver_plugin_folder, 'default', parent=self)
+        self.window = WindowXMLDialogActions('control_window.xml', chromedriver_plugin_folder, 'default', parent=self)
         self.browser = browser
         self.jsTarget = jsTarget
         self.keymap = DEFAULT_KEYMAP
@@ -67,6 +67,7 @@ class window(object):
                 sleep(25)
             else:
                 sleep(250)
+        sender.close()
 
     def doModal(self):
         import threading

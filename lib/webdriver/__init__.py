@@ -10,7 +10,7 @@ import base64
 import requests
 import platform
 import threading
-# import subprocess
+from collections import namedtuple
 
 from concurrent.futures import ThreadPoolExecutor
 import _include as includes
@@ -25,7 +25,7 @@ import js_fn
 # if chromedriver_path not in sys.path:
 #     sys.path.append(chromedriver_path)
 
-resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..'))
+resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..','resources'))
 
 import selenium.webdriver
 
@@ -35,6 +35,7 @@ BROWSER_FIREFOX = "firefox"
 BROWSER_IE = "internetexplorer"
 
 _use_browser = BROWSER_CHROME
+
 
 if _use_browser == BROWSER_CHROME:
     if osWin:
@@ -51,6 +52,18 @@ if _use_browser == BROWSER_CHROME:
 
     from selenium.webdriver.chrome.options import Options as ChromeOptions
 
+def get_ps():
+    ps = subprocess.check_output(["ps","-xf"])
+    pid = None
+    pslines = ps.splitlines()
+    ps_entry = namedtuple('ps_entry', pslines[0].strip().split())
+    ps_entries = [ ]
+    for line in pslines[1:]:
+        spline = line.strip().split()
+        spline = spline[:7] + [" ".join(spline[7:])]
+        ps_entries.append(ps_entry(*spline))
+    return ps_entries
+
 
 class Browser(object):
     _browser = None
@@ -58,7 +71,7 @@ class Browser(object):
         # Check if webdriver instance running
 
         self.browser_lock = threading.Lock()
-        self._browser = None
+
         self.plugins = {}
         self.background = ThreadPoolExecutor(max_workers=1)
 
@@ -66,6 +79,7 @@ class Browser(object):
             self._chrome_options = ChromeOptions()
             self._chrome_options.add_argument("disable-web-security") # We can't do the ajax get/post without this option, thanks to CORS
             #chrome_options.add_argument('--load-and-launch-app="%s"' % os.path.join(os.path.dirname(__file__), 'kodi-chrome-app'))
+            #self._chrome_options.add_argument("--disable-bundled-ppapi-flash") # Everyone who's anyone hates flash... especially because selenium can't control it!
             self._chrome_options.add_argument('--kiosk')
         else:
             raise NotImplementedError("Currently only supports chrome")
@@ -92,10 +106,13 @@ class Browser(object):
                         sleep(1)
                 if not self._browser:
                     raise Exception("Can't start webdriver")
-                self._browser.get("file://%s/black.htm" % resources_path.replace('\\','/'))
-                self.send_browser_to_back()
+                # self._browser.get("file://%s/black.htm" % resources_path.replace('\\','/'))
+                # self.send_browser_to_back()
         return self._browser
 
+    def close(self):
+        with self.browser_lock:
+            self.browser.close()
 
     def show_control_window(self, jsTarget = None):
         # blocking
@@ -161,14 +178,14 @@ class Browser(object):
                             except (OSError, subprocess.CalledProcessError):
                                 xbmc.log("Please install wmctrl or xdotool")
                         break
-                    sleep(500)
+                    sleep(0.5)
             except (OSError, subprocess.CalledProcessError):
                 pass
 
         elif osOSX:
             timeout = time.time() + 10
             while time.time() < timeout:
-                sleep(500)
+                sleep(0.5)
                 applescript_switch_browser = """tell application "System Events"
                         set frontmost of the first process whose unix id is %d to true
                     end tell""" % pid
@@ -219,24 +236,29 @@ class Browser(object):
     def pid(self):
         if platform.system() == 'Windows':
             raise NotImplementedError("Need to add new method to find parent pid on windows, psutil module perhaps?")
-        ps = subprocess.check_output(["ps","-xf"])
-        pid = None
-        for line in ps.splitlines()[1:]:
-            try:
-                splitline = line.strip().split()
-                with self.browser_lock:
-                    if splitline[2] == str(self.browser.service.process.pid):
-                        pid = int(splitline[1])
-                        break
-            except (IndexError, ValueError) as ex: pass
-        return pid
+
+        if _use_browser == BROWSER_CHROME:
+            ps = get_ps()
+            cd_pid = None
+            chrome_pid = 0
+            for line in ps:
+                if chrome_driver_path in line.CMD:
+                    cd_pid = line.PID
+                    break
+            for line in ps:
+                if line.PPID == cd_pid:
+                    chrome_pid = line.PID
+            return int(chrome_pid)
 
     ## Functions for interacting with browser
 
     def send_keys(self, key, target = None):
         target = '/html/body' if target is None else target
         with self.browser_lock:
-            result = self.browser.find_elements_by_xpath(target)[0].send_keys(key)
+            result = False
+            elements = self.browser.find_elements_by_xpath(target)
+            if len(elements):
+                result = elements[0].send_keys(key)
         return result
 
     def navigateBack(self):

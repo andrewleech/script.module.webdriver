@@ -5,7 +5,7 @@
 import time
 try:
     import xbmc
-    sleep = xbmc.sleep
+    sleep = lambda t: xbmc.sleep(int(t*1000))
     log = lambda text: xbmc.log(text, level=xbmc.LOGDEBUG)
 
 except ImportError: # Not running in xbmc/kodi

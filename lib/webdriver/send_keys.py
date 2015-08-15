@@ -1,5 +1,5 @@
 __author__ = 'corona'
-import time
+from _utils import *
 import threading
 
 import xbmcclient
@@ -17,23 +17,26 @@ class KeySender(object):
         self._client_lock = threading.Lock()
         self._closed = threading.Event()
 
-        self.client = xbmcclient.XBMCClient(name="ChromeDriver")
+        self.client = xbmcclient.XBMCClient(name="WebdriverKeyEntry")
         self.client.connect()
 
         self._pingThread = threading.Thread(target=self.ping_thread)
         self._pingThread.daemon = True
         self._pingThread.start()
 
+    def close(self):
+        self._closed.set()
+        with self._client_lock:
+            self.client.close()
 
     def ping_thread(self):
         while not self._closed.is_set():
             # required ping every 60 seconds to keep connection alive
-            for _ in range(50):
-                time.sleep(1)
+            for _ in range(40):
+                sleep(1)
 
             with self._client_lock:
                 self.client.ping()
-
 
     def send_key(self, keystrokes):
 
@@ -56,9 +59,8 @@ class KeySender(object):
             if keyName:
                 with self._client_lock:
                     self.client.send_keyboard_button(keyName)
+                    sleep(0.2)
                     self.client.release_button()
 
     def __del__(self):
-        self._closed.set()
-        with self._client_lock:
-            self.client.close()
+        self.close()
