@@ -1,14 +1,13 @@
 __author__ = 'corona'
 
 import os
-import sys
-import xbmcgui
 from selenium.webdriver.common.keys import Keys
-import xbmc
-sleep = xbmc.sleep
+from selenium.webdriver.common.by import By
+from _utils import *
 
 import send_keys
 
+import xbmcgui
 DEFAULT_KEYMAP = {
     xbmcgui.ACTION_SELECT_ITEM   : ("sendkey",Keys.SPACE),
     xbmcgui.ACTION_MOVE_LEFT     : ("sendkey",Keys.ARROW_LEFT),
@@ -43,12 +42,20 @@ class WindowXMLDialogActions(xbmcgui.WindowXMLDialog):
             self.parent.onAction(*args)
 
 class window(object):
-    def __init__(self, browser, jsTarget):
+    def __init__(self, browser, jsTargetBy = None, jsTarget = None, keymap = None):
         chromedriver_plugin_folder = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..',))
         self.window = WindowXMLDialogActions('control_window.xml', chromedriver_plugin_folder, 'default', parent=self)
         self.browser = browser
+        self.jsTargetBy = jsTargetBy
         self.jsTarget = jsTarget
-        self.keymap = DEFAULT_KEYMAP
+        jstype = 'getElementById'    if jsTargetBy == By.ID else \
+                 'querySelectorAll'  if jsTargetBy == By.CSS_SELECTOR else \
+                 'getElementsByName' if jsTargetBy == By.NAME else \
+                 'getElementsByClassName' if jsTargetBy == By.CLASS_NAME else \
+                 None
+        if not jstype: raise NotImplementedError
+        #res = self.browser.execute_script("document.%s('%s').contentEditable = true;" % (jstype, self.jsTarget))
+        self.keymap = DEFAULT_KEYMAP if keymap is None else keymap
 
     def _backgroundJsHandler(self, stopEvt):
         """
@@ -57,16 +64,20 @@ class window(object):
         self.browser.startMonitoringKeystrokes()
         sender = send_keys.KeySender()
         while not stopEvt.is_set():
-            keys = self.browser.getKeystrokes()
-#            for key in keys:
-            if keys:
-                sender.send_key(keys)
- #               action = KEY_ACTION_MAP.get(key.get('name', None), None)
-  #              if action:
-   #                 self.onAction(action)
-                sleep(25)
-            else:
-                sleep(250)
+            try:
+                keys = self.browser.getKeystrokes()
+    #            for key in keys:
+                if keys:
+                    sender.send_key(keys)
+     #               action = KEY_ACTION_MAP.get(key.get('name', None), None)
+      #              if action:
+       #                 self.onAction(action)
+                    sleep(0.025)
+                else:
+                    sleep(0.250)
+            except Exception as ex:
+                log(__import__('traceback').format_exc())
+                log(str(ex))
         sender.close()
 
     def doModal(self):
@@ -87,10 +98,16 @@ class window(object):
         action = action.getId() if isinstance(action, xbmcgui.Action) else action
         action_name, args = self.keymap.get(action, (None, None))
         if action_name:
-            self.__getattribute__("action_"+str(action_name))(args)
+            fn = getattr(self, "action_"+str(action_name), None)
+            if fn is None:
+                fn = getattr(self.browser, "action_"+str(action_name), None)
+            if fn is not None:
+                fn(args)
+            else:
+                log("Action function not availible: " + str(action_name))
 
     def action_exit(self,*args):
         self.window.close()
 
     def action_sendkey(self,*args):
-        self.browser.send_keys(*args+(self.jsTarget,))
+        self.browser.send_keys(*args+(self.jsTargetBy, self.jsTarget,))

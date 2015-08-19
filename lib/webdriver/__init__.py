@@ -28,6 +28,8 @@ import js_fn
 resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..','resources'))
 
 import selenium.webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
 # TODO move to settings
 BROWSER_CHROME = "chrome"
@@ -78,9 +80,8 @@ class Browser(object):
         if _use_browser == BROWSER_CHROME:
             self._chrome_options = ChromeOptions()
             self._chrome_options.add_argument("disable-web-security") # We can't do the ajax get/post without this option, thanks to CORS
-            #chrome_options.add_argument('--load-and-launch-app="%s"' % os.path.join(os.path.dirname(__file__), 'kodi-chrome-app'))
             #self._chrome_options.add_argument("--disable-bundled-ppapi-flash") # Everyone who's anyone hates flash... especially because selenium can't control it!
-            self._chrome_options.add_argument('--kiosk')
+            #self._chrome_options.add_argument('--kiosk')
         else:
             raise NotImplementedError("Currently only supports chrome")
 
@@ -102,7 +103,7 @@ class Browser(object):
                     except Exception as ex:
                         # TODO check the kind of exception above
                         # TODO add args to keep it running in background
-                        subprocess.Popen([os.path.join(chrome_driver_path, 'chromedriver'), '--port=%d'%port])
+                        subprocess.Popen([os.path.join(chrome_driver_path, 'chromedriver'), '--port=%d'%port], close_fds=True)
                         sleep(1)
                 if not self._browser:
                     raise Exception("Can't start webdriver")
@@ -114,12 +115,13 @@ class Browser(object):
         with self.browser_lock:
             self.browser.close()
 
-    def show_control_window(self, jsTarget = None):
+    def show_control_window(self, jsTargetBy = None, jsTarget = None, keymap = None):
         # blocking
+        self.jsTargetBy = jsTargetBy
         self.jsTarget = jsTarget
         try:
             import control_window
-            controlWindow = control_window.window(self, self.jsTarget)
+            controlWindow = control_window.window(self, self.jsTargetBy, self.jsTarget, keymap)
             controlWindow.doModal()
         except ImportError: pass
 
@@ -252,13 +254,32 @@ class Browser(object):
 
     ## Functions for interacting with browser
 
-    def send_keys(self, key, target = None):
-        target = '/html/body' if target is None else target
+    def execute_script(self, js_script, timeout=5):
+        with self.browser_lock:
+            self.browser.set_script_timeout(timeout)
+            result = self.browser.execute_script(js_script)
+        return result
+
+    def send_keys(self, key, by = None, target = None):
+        target = 'body' if target is None else target
+        by = By.CSS_SELECTOR if by is None else by
         with self.browser_lock:
             result = False
-            elements = self.browser.find_elements_by_xpath(target)
-            if len(elements):
-                result = elements[0].send_keys(key)
+            click_by = By.ID
+            click_target = "kodi_webdriver_keypress_target"
+            click_element = self.browser.find_element(click_by, click_target)
+            if click_element:
+                jstype = 'getElementById'    if by == By.ID else \
+                     'querySelectorAll'  if by == By.CSS_SELECTOR else \
+                     'getElementsByName' if by == By.NAME else \
+                     'getElementsByClassName' if by == By.CLASS_NAME else \
+                     None
+                if not jstype: raise NotImplementedError
+
+                # Send key to our target div
+                result = click_element.send_keys(key)
+                # then re-focus the desired target
+                self.browser.execute_script("document.%s('%s').focus();"% (jstype, target))
         return result
 
     def navigateBack(self):

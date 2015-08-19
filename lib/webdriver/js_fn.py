@@ -48,21 +48,66 @@ req.onload = function() {{
 req.send(null);
 """
 
-start_watching_keys_js = """
+start_watching_keys_js_complex = """
+// Record any previous event handlers if assigned by jquery
+// http://stackoverflow.com/a/447106
+kodi_webdriver_window_keydown = []
+
+try {
+    var clickEvents = window.getStorage().get('prototype_event_registry').get('keydown');
+    clickEvents.each(function(wrapper){
+        kodi_webdriver_window_keydown.push(wrapper.handler);
+    });
+} catch(err) { }
+
+try {
+    var keydownEvents = $(window).data("events").keydown;
+    jQuery.each(keydownEvents, function(key, handlerObj) {
+        kodi_webdriver_window_keydown.push(handlerObj.handler);
+        // also available: handlerObj.type, handlerObj.namespace
+    });
+    $(window).unbind("keydown");
+
+} catch(err) { }
+
+var orig = window.onclick;
+if (orig) {
+    kodi_webdriver_window_keydown.push(orig);
+}
+
+var target = document.createElement('div');
+target.innerHtml = "<br>";
+target.id = "kodi_webdriver_keypress_target";
+target.contentEditable = true;
+document.body.appendChild(target);
+
 kodi_keys = [];
 document.onkeydown = function(evt) {
     evt = evt || window.event;
-    var key = { keyIdentifier:evt.keyIdentifier,
-                keyCode:evt.keyCode,
-                timeStamp:evt.timeStamp,
-                layerX:evt.layerX,
-                layerY:evt.layerY,
-                ctrlKey:evt.ctrlKey,
-                altKey:evt.altKey,
-                metaKey:evt.metaKey,
-                shiftKey:evt.shiftKey
-              };
-    kodi_keys.push(key);
+    var target = document.getElementById("kodi_webdriver_keypress_target");
+    if (evt.target != target) {
+        var key = { keyIdentifier:evt.keyIdentifier,
+                    keyCode:evt.keyCode,
+                    timeStamp:evt.timeStamp,
+                    layerX:evt.layerX,
+                    layerY:evt.layerY,
+                    ctrlKey:evt.ctrlKey,
+                    altKey:evt.altKey,
+                    metaKey:evt.metaKey,
+                    shiftKey:evt.shiftKey
+                  };
+        kodi_keys.push(key);
+        // Block any default behavior
+        evt.stopPropagation();
+        evt.stopImmediatePropagation();
+        evt.preventDefault();
+        return false;
+    } else {
+        for (var fn in kodi_webdriver_window_keydown) {
+            alert(evt)
+            fn(evt);
+        }
+    }
 };
 return kodi_keys;
 """
