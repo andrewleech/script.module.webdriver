@@ -85,6 +85,9 @@ class Browser(object):
         else:
             raise NotImplementedError("Currently only supports chrome")
 
+        self._monitoring_target = None
+        self._monitoring_parent = None
+
     @property
     def browser(self):
         """
@@ -260,28 +263,6 @@ class Browser(object):
             result = self.browser.execute_script(js_script)
         return result
 
-    def send_keys(self, key, by = None, target = None):
-        target = 'body' if target is None else target
-        by = By.CSS_SELECTOR if by is None else by
-        with self.browser_lock:
-            result = False
-            click_by = By.ID
-            click_target = "kodi_webdriver_keypress_target"
-            click_element = self.browser.find_element(click_by, click_target)
-            if click_element:
-                jstype = 'getElementById'    if by == By.ID else \
-                     'querySelectorAll'  if by == By.CSS_SELECTOR else \
-                     'getElementsByName' if by == By.NAME else \
-                     'getElementsByClassName' if by == By.CLASS_NAME else \
-                     None
-                if not jstype: raise NotImplementedError
-
-                # Send key to our target div
-                result = click_element.send_keys(key)
-                # then re-focus the desired target
-                self.browser.execute_script("document.%s('%s').focus();"% (jstype, target))
-        return result
-
     def navigateBack(self):
         with self.browser_lock:
             result =  self.browser.back()
@@ -325,10 +306,20 @@ class Browser(object):
             result =  self.browser.add_cookie(cookies)
         return result
 
-    def startMonitoringKeystrokes(self):
+    def startMonitoringKeystrokes(self, by, target):
         with self.browser_lock:
             self.browser.set_script_timeout(5)
-            result = self.browser.execute_script(js_fn.start_watching_keys_js)
+
+            jstype = 'getElementById'     if by == By.ID else \
+                 'querySelectorAll'       if by == By.CSS_SELECTOR else \
+                 'getElementsByName'      if by == By.NAME else \
+                 'getElementsByClassName' if by == By.CLASS_NAME else \
+                 None
+            if not jstype: raise NotImplementedError
+            result = self.browser.execute_script(js_fn.start_watching_target_keys_js % (jstype, target))
+            if result:
+                self._monitoring_target = result['target']
+                self._monitoring_parent = result['parent']
         return result
 
     def getKeystrokes(self):
@@ -338,6 +329,58 @@ class Browser(object):
         for key in keys:
             key['name'] = js_fn.keycodeToKeyname.get(key['keyCode'], None)
         return keys
+
+    def send_keys_to_monitored(self, key):
+        # TODO incomplete
+        with self.browser_lock:
+            result = False
+
+            if self._monitoring_parent:
+                # todo cache these during configuration
+                jstype = 'getElementById' if by == By.ID else \
+                     'querySelectorAll'   if by == By.CSS_SELECTOR else \
+                     'getElementsByName'  if by == By.NAME else \
+                     'getElementsByClassName' if by == By.CLASS_NAME else \
+                     None
+                if not jstype: raise NotImplementedError
+
+                #telement = self.browser.find_element(by, target)
+                pelement = self.browser.execute_script("var pele = document.%s('%s').parentElement;pele.contentEditable = true;return pele"% (jstype, target))
+                #pelement = telement.find_element_by_xpath('..')
+
+                # click_by = By.ID
+                # click_target = "kodi_webdriver_keypress_target"
+                # click_element = self.browser.find_element(click_by, click_target)
+                if pelement:
+                    # Send key to our target div
+                    result = pelement.send_keys(key)
+                    # then re-focus the desired target
+                    self.browser.execute_script("document.%s('%s').focus();document.%s('%s').parentElement.contentEditable = false;"% (jstype, target))
+        return result
+
+
+    def send_keys(self, key, by = None, target = None):
+        target = 'body' if target is None else target
+        by = By.CSS_SELECTOR if by is None else by
+        with self.browser_lock:
+            result = False
+
+            # todo cache these during configuration
+            jstype = 'getElementById'    if by == By.ID else \
+                 'querySelectorAll'  if by == By.CSS_SELECTOR else \
+                 'getElementsByName' if by == By.NAME else \
+                 'getElementsByClassName' if by == By.CLASS_NAME else \
+                 None
+            if not jstype: raise NotImplementedError
+
+            telement = self.browser.find_element(by, target)
+
+            if telement:
+                # Send key to our target div
+                result = telement.send_keys(key)
+                # then re-focus the desired target
+                # self.browser.execute_script("document.%s('%s').focus();"% (jstype, target))
+        return result
 
     def downloadImage(self, url_filepaths, background):
         if background:

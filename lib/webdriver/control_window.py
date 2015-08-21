@@ -48,20 +48,13 @@ class window(object):
         self.browser = browser
         self.jsTargetBy = jsTargetBy
         self.jsTarget = jsTarget
-        jstype = 'getElementById'    if jsTargetBy == By.ID else \
-                 'querySelectorAll'  if jsTargetBy == By.CSS_SELECTOR else \
-                 'getElementsByName' if jsTargetBy == By.NAME else \
-                 'getElementsByClassName' if jsTargetBy == By.CLASS_NAME else \
-                 None
-        if not jstype: raise NotImplementedError
-        #res = self.browser.execute_script("document.%s('%s').contentEditable = true;" % (jstype, self.jsTarget))
         self.keymap = DEFAULT_KEYMAP if keymap is None else keymap
 
     def _backgroundJsHandler(self, stopEvt):
         """
         Runs in thread while control window is open
         """
-        self.browser.startMonitoringKeystrokes()
+        self.browser.startMonitoringKeystrokes(self.jsTargetBy, self.jsTarget)
         sender = send_keys.KeySender()
         while not stopEvt.is_set():
             try:
