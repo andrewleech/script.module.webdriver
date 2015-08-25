@@ -81,7 +81,7 @@ class Browser(object):
             self._chrome_options = ChromeOptions()
             self._chrome_options.add_argument("disable-web-security") # We can't do the ajax get/post without this option, thanks to CORS
             #self._chrome_options.add_argument("--disable-bundled-ppapi-flash") # Everyone who's anyone hates flash... especially because selenium can't control it!
-            #self._chrome_options.add_argument('--kiosk')
+            self._chrome_options.add_argument('--kiosk')
         else:
             raise NotImplementedError("Currently only supports chrome")
 
