@@ -1,0 +1,6 @@
+----------ChromeDriver v2.18 (2015-08-19)----------
+Supports Chrome v43-46
+Resolved issue 1158: Unable to find elements after installing Chrome 44 [['ChromeDriver-2.17', 'OS-All', 'Pri-1']]
+Resolved issue 635: Implement touch actions for android chrome [['OS-Android', 'Pri-2']]
+Resolved issue 1194: unknown error: cannot determine loading status from disconnected: received Inspector.detached event [[]]
+

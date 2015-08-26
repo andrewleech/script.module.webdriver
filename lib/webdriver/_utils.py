@@ -40,7 +40,9 @@ except AttributeError:
     subprocess.check_output = check_output
 
 
-import sys
+import sys, platform
 osOSX = sys.platform.startswith('darwin')
 osLinux = sys.platform.startswith('linux')
+osLinux32 = osLinux and platform.architecture()[0] == '32bit'
+osLinux64 = osLinux and platform.architecture()[0] == '64bit'
 osWin = 'win32' in sys.platform

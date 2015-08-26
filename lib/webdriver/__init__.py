@@ -18,13 +18,6 @@ from _utils import *
 
 import js_fn
 
-# lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# if lib_path not in sys.path:
-#     sys.path.append(lib_path)
-# chromedriver_path = os.path.join(os.path.dirname(__file__))
-# if chromedriver_path not in sys.path:
-#     sys.path.append(chromedriver_path)
-
 resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..','resources'))
 
 import selenium.webdriver
@@ -38,14 +31,17 @@ BROWSER_IE = "internetexplorer"
 
 _use_browser = BROWSER_CHROME
 
-
 if _use_browser == BROWSER_CHROME:
+    chromedriver_version = "chromedriver_2.18"
+    basepath = os.path.join(os.path.dirname(__file__),'bin', chromedriver_version)
     if osWin:
-        chrome_driver_path= os.path.join(os.path.dirname(__file__),'bin','win32')
+        chrome_driver_path= os.path.join(basepath,'chromedriver_win32')
     elif osOSX:
-        chrome_driver_path= os.path.join(os.path.dirname(__file__),'bin','osx')
-    elif osLinux:
-        chrome_driver_path= os.path.join(os.path.dirname(__file__),'bin','linux')
+        chrome_driver_path= os.path.join(basepath,'chromedriver_mac32')
+    elif osLinux32:
+        chrome_driver_path= os.path.join(basepath,'chromedriver_linux32')
+    elif osLinux64:
+        chrome_driver_path= os.path.join(basepath,'chromedriver_linux64')
     else:
         raise NotImplementedError("Dont' know platform: " % str(sys.platform))
 
@@ -65,6 +61,56 @@ def get_ps():
         spline = spline[:7] + [" ".join(spline[7:])]
         ps_entries.append(ps_entry(*spline))
     return ps_entries
+
+
+## TODO - stub to complete and test to see if we can reuse a browser across multiple runs
+class ReusableRemote(selenium.webdriver.Remote):
+    def __init__(self, command_executor='http://127.0.0.1:4444/wd/hub',
+        desired_capabilities=None, browser_profile=None, proxy=None, keep_alive=False):
+        """
+        Create a new driver that will issue commands using the wire protocol.
+
+        :Args:
+         - command_executor - Either a command.CommandExecutor object or a string that specifies the URL of a remote server to send commands to.
+         - desired_capabilities - Dictionary holding predefined values for starting a browser
+         - browser_profile - A selenium.webdriver.firefox.firefox_profile.FirefoxProfile object.  Only used if Firefox is requested.
+        """
+        super(ReusableRemote, self).__init__(command_executor, desired_capabilities, browser_profile, proxy, keep_alive)
+
+    def start_session(self, desired_capabilities, browser_profile=None):
+        """
+        Creates a new session with the desired capabilities.
+
+        :Args:
+         - browser_name - The name of the browser to request.
+         - version - Which browser version to request.
+         - platform - Which platform to request the browser on.
+         - javascript_enabled - Whether the new session should support JavaScript.
+         - browser_profile - A selenium.webdriver.firefox.firefox_profile.FirefoxProfile object. Only used if Firefox is requested.
+        """
+        # if browser_profile:
+        #     desired_capabilities['firefox_profile'] = browser_profile.encoded
+        # response = self.execute(Command.NEW_SESSION, {
+        #     'desiredCapabilities': desired_capabilities,
+        # })
+        # self.session_id = response['sessionId']
+        # self.capabilities = response['value']
+
+        ## https://code.google.com/p/selenium/issues/detail?id=3927#c1
+
+        sid = getPreviousSessionIdFromSomeStorage()
+        if sid is not None:
+            self.setSessionId(sid)
+            try:
+                self.getCurrentUrl()
+            except WebDriverException as e:
+                # session is not valid
+                sid = None
+
+        if sid is None:
+            super(ReusableRemote, self).startSession(desiredCapabilities)
+            saveSessionIdToSomeStorage(self.getSessionId().toString())
+
 
 
 class Browser(object):
@@ -427,6 +473,11 @@ class Browser(object):
 
         end = time.time()
         print "downloadImage: %0.2f" % (end-start)
+
+def openSettings():
+    import xbmcaddon
+    addon = xbmcaddon.Addon(id='script.module.webdriver')
+    addon.openSettings()
 
 if __name__ == '__main__':
     # Used for testing outside of kodi
