@@ -18,6 +18,14 @@ from _utils import *
 
 import js_fn
 
+## Settings
+import xbmcaddon
+addon = xbmcaddon.Addon(id='script.module.webdriver')
+debug           = addon.getSetting('debug')
+useKiosk        = addon.getSetting('useKiosk')
+useCustomPath   = addon.getSetting('useCustomPath')
+customPath      = addon.getSetting('customPath') if useCustomPath else None
+
 resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..','resources'))
 
 import selenium.webdriver
@@ -127,7 +135,8 @@ class Browser(object):
             self._chrome_options = ChromeOptions()
             self._chrome_options.add_argument("disable-web-security") # We can't do the ajax get/post without this option, thanks to CORS
             #self._chrome_options.add_argument("--disable-bundled-ppapi-flash") # Everyone who's anyone hates flash... especially because selenium can't control it!
-            self._chrome_options.add_argument('--kiosk')
+            if useKiosk:
+                self._chrome_options.add_argument('--kiosk')
         else:
             raise NotImplementedError("Currently only supports chrome")
 
@@ -475,8 +484,6 @@ class Browser(object):
         print "downloadImage: %0.2f" % (end-start)
 
 def openSettings():
-    import xbmcaddon
-    addon = xbmcaddon.Addon(id='script.module.webdriver')
     addon.openSettings()
 
 if __name__ == '__main__':
