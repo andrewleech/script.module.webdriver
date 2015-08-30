@@ -22,7 +22,7 @@ addon = xbmcaddon.Addon(id='script.module.webdriver')
 debug           = addon.getSetting('debug')
 useKiosk        = addon.getSetting('useKiosk')
 useCustomPath   = addon.getSetting('useCustomPath')
-customPath      = addon.getSetting('customPath') if useCustomPath else None
+customPath      = addon.getSetting('customPath') if useCustomPath == 'true' else None
 
 resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..','resources'))
 
@@ -142,6 +142,14 @@ class Browser(object):
 
         if _use_browser == BROWSER_CHROME:
             self._chrome_options = ChromeOptions()
+            if customPath:
+                if not os.path.exists(customPath):
+                    log("ERROR: custom path does not exist")
+                mode = os.stat(customPath).st_mode
+                mode |= stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+                os.chmod(customPath, mode)
+
+                self._chrome_options.binary_location(customPath)
             self._chrome_options.add_argument("disable-web-security") # We can't do the ajax get/post without this option, thanks to CORS
             #self._chrome_options.add_argument("--disable-bundled-ppapi-flash") # Everyone who's anyone hates flash... especially because selenium can't control it!
             if useKiosk:
@@ -164,14 +172,19 @@ class Browser(object):
             if _use_browser == BROWSER_CHROME:
                 # self._browser = webdriver.Chrome(chrome_options=self._chrome_options, port=47238)
                 for _ in range(2):
-                    try:
-                        self._browser = selenium.webdriver.Remote("http://127.0.0.1:%d"%port, desired_capabilities=self._chrome_options.to_capabilities())
-                        break
-                    except Exception as ex:
-                        # TODO check the kind of exception above
-                        # TODO add args to keep it running in background
-                        subprocess.Popen([os.path.join(chrome_driver_path, 'chromedriver'), '--port=%d'%port], close_fds=True)
-                        sleep(1)
+                    use_remote = False
+                    if use_remote:
+                        try:
+                            self._browser = selenium.webdriver.Remote("http://127.0.0.1:%d"%port, desired_capabilities=self._chrome_options.to_capabilities())
+                            break
+                        except Exception as ex:
+                            # TODO check the kind of exception above
+                            # TODO add args to keep it running in background
+                            subprocess.Popen([os.path.join(chrome_driver_path, 'chromedriver'), '--port=%d'%port], close_fds=True)
+                            sleep(1)
+                    else:
+                        self._browser = selenium.webdriver.Chrome(chrome_options=self._chrome_options)
+
                 if not self._browser:
                     raise Exception("Can't start webdriver")
                 # self._browser.get("file://%s/black.htm" % resources_path.replace('\\','/'))
