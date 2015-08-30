@@ -184,6 +184,7 @@ class Browser(object):
                             sleep(1)
                     else:
                         self._browser = selenium.webdriver.Chrome(chrome_options=self._chrome_options)
+                        break
 
                 if not self._browser:
                     raise Exception("Can't start webdriver")
