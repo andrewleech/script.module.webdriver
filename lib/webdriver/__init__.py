@@ -3,9 +3,7 @@ __author__ = 'corona'
 import os
 import re
 import imp
-# import sys
-# import time
-# import types
+import stat
 import base64
 import requests
 import platform
@@ -52,6 +50,17 @@ if _use_browser == BROWSER_CHROME:
         chrome_driver_path= os.path.join(basepath,'chromedriver_linux64')
     else:
         raise NotImplementedError("Dont' know platform: " % str(sys.platform))
+
+    for fname in os.listdir(chrome_driver_path):
+        # Add execute permissions
+        try:
+            fname = os.path.join(chrome_driver_path, fname)
+            mode = os.stat(fname).st_mode
+            mode |= stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+            os.chmod(fname, mode)
+        except OSError:
+            pass
+
 
     if chrome_driver_path not in os.environ["PATH"]:
         os.environ["PATH"] += os.pathsep + chrome_driver_path
