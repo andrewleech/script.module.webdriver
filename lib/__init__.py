@@ -1,2 +1,2 @@
 __author__ = 'corona'
-import webdriver
+import webbrowser
