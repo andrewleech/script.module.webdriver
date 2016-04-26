@@ -1,5 +1,47 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<window type="window">
-  <allowoverlay>yes</allowoverlay>
-  <backgroundcolor>0x88888888</backgroundcolor>
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<window>
+	<defaultcontrol always="true">10</defaultcontrol>
+	<coordinates>
+		<left>335</left>
+		<top>230</top>
+	</coordinates>
+	<include>dialogeffect</include>
+	<depth>DepthDialog+</depth>
+	<controls>
+		<include name="DialogBackgroundCommons">
+			<param name="DialogBackgroundWidth" value="610" />
+			<param name="DialogBackgroundHeight" value="240" />
+			<param name="DialogHeaderWidth" value="530" />
+			<param name="DialogHeaderLabel" value="$LOCALIZE[32000]" />
+			<param name="DialogHeaderId" value="1" />
+			<param name="CloseButtonLeft" value="520" />
+			<param name="CloseButtonNav" value="10" />
+		</include>
+		<control type="textbox" id="7509">
+			<description>$LOCALIZE[32001]</description>
+			<left>30</left>
+			<top>62</top>
+			<width>550</width>
+			<height>98</height>
+			<align>left</align>
+			<label>* $LOCALIZE[32001]</label>
+			<font>font13</font>
+		</control>
+		<control type="button" id="7510">
+			<description>Cancel</description>
+			<left>205</left>
+			<top>175</top>
+			<width>200</width>
+			<height>40</height>
+			<label>186</label>
+			<font>font12_title</font>
+			<textcolor>white</textcolor>
+			<focusedcolor>white</focusedcolor>
+			<align>center</align>
+			<onleft>10</onleft>
+			<onright>10</onright>
+			<onup>10</onup>
+			<ondown>10</ondown>
+		</control>
+	</controls>
 </window>

@@ -20,4 +20,8 @@
   <string id="31002">Firefox</string>
   <string id="31003">Safari</string>
   <string id="31004">Internet Explorer</string>
+
+  <string id="32000">Playing</string>
+  <string id="32001">Video playing in rcBrowser</string>
+  <string id="32002">Cancel</string>
 </strings>

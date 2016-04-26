@@ -191,6 +191,9 @@ for(var i = 0; i < total; i++) {
 
 get_keys_js = "var kodi_retkeys = kodi_keys; kodi_keys = []; return kodi_retkeys;"
 
+def close():
+    return "close();"
+
 def keypress(key):
     # hexkey = hex(key)[2:]
     # hexkey = r"\\u" + "0" * (4 - len(hexkey)) + hexkey

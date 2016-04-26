@@ -1,54 +1,72 @@
 __author__ = 'corona'
 
 import os
-# from selenium.webdriver.common.keys import Keys
-# from selenium.webdriver.common.by import By
-from utils import *
-from js_fn import keynameToKeycode as Keys
-
-import send_keys
+import js_fn
 
 import xbmcgui
+import xbmcaddon
+
+import send_keys
+from utils import *
 
 DEFAULT_KEYMAP = {
-    xbmcgui.ACTION_SELECT_ITEM   : ("sendkey",Keys.SPACE),
-    xbmcgui.ACTION_MOVE_LEFT     : ("sendkey",Keys.LEFT),
-    xbmcgui.ACTION_MOVE_RIGHT    : ("sendkey",Keys.RIGHT),
-    xbmcgui.ACTION_MOVE_UP       : ("sendkey",Keys.UP),
-    xbmcgui.ACTION_MOVE_DOWN     : ("sendkey",Keys.DOWN),
-    xbmcgui.ACTION_PLAY          : ("sendkey",Keys.SPACE),
-    xbmcgui.ACTION_NAV_BACK      : ("exit",None),
-    xbmcgui.ACTION_PARENT_DIR    : ("exit",None),
-    xbmcgui.ACTION_PREVIOUS_MENU : ("exit",None),
-    xbmcgui.ACTION_STOP          : ("exit",None),
-    xbmcgui.ACTION_SHOW_INFO     : ("exit",None),
-    xbmcgui.ACTION_SHOW_GUI      : ("exit",None),
+    xbmcgui.ACTION_SELECT_ITEM   : js_fn.keypress(js_fn.keycode.space),
+    xbmcgui.ACTION_MOVE_LEFT     : js_fn.keypress(js_fn.keycode.left),
+    xbmcgui.ACTION_MOVE_RIGHT    : js_fn.keypress(js_fn.keycode.right),
+    xbmcgui.ACTION_MOVE_UP       : js_fn.keypress(js_fn.keycode.up),
+    xbmcgui.ACTION_MOVE_DOWN     : js_fn.keypress(js_fn.keycode.down),
+    xbmcgui.ACTION_PLAY          : js_fn.keypress(js_fn.keycode.space),
+    xbmcgui.ACTION_NAV_BACK      : js_fn.close(),
+    xbmcgui.ACTION_PARENT_DIR    : js_fn.close(),
+    xbmcgui.ACTION_PREVIOUS_MENU : js_fn.close(),
+    xbmcgui.ACTION_STOP          : js_fn.close(),
+    xbmcgui.ACTION_SHOW_INFO     : js_fn.close(),
+    xbmcgui.ACTION_SHOW_GUI      : js_fn.close(),
 }
 
-# KEY_ACTION_MAP = {
-#     "Esc"    : xbmcgui.ACTION_PREVIOUS_MENU,
-#     "Up"     : xbmcgui.ACTION_MOVE_UP,
-#     "Down"   : xbmcgui.ACTION_MOVE_DOWN,
-#     "Left"   : xbmcgui.ACTION_MOVE_LEFT,
-#     "Right"  : xbmcgui.ACTION_MOVE_RIGHT,
-#     "P"      : xbmcgui.ACTION_PLAY,
-# }
 
 class WindowXMLDialogActions(xbmcgui.WindowXMLDialog):
-    def __init__(self, strXMLname, strFallbackPath, strDefaultName, forceFallback=0, parent = None):
+    # def __init__(self, strXMLname, strFallbackPath, strDefaultName, forceFallback=0, parent = None):
+    #     self.parent = parent
+    #     xbmcgui.WindowXMLDialog.__init__( self )
+    TEXTBOX_ID = 7509
+    OK_BUTTON_ID = 7510
+
+    def setParent(self, parent):
         self.parent = parent
-        xbmcgui.WindowXMLDialog.__init__( self )
 
     def onAction(self, *args):
         if self.parent:
             self.parent.onAction(*args)
 
+    def onClick(self, controlId):
+        if controlId == self.OK_BUTTON_ID:
+            self.close()
+
+    def onInit(self):
+        # window = xbmcgui.Window(xbmcgui.getCurrentWindowId())
+        addon = xbmcaddon.Addon('script.module.webbrowser')
+        textbox = self.getControl(self.TEXTBOX_ID)
+        ok_button = self.getControl(self.OK_BUTTON_ID)
+        textbox.setText(addon.getLocalizedString(32001))
+        textbox.setVisible(True)
+        ok_button.setLabel(addon.getLocalizedString(32002))
+
+
 class window(object):
     def __init__(self, browser, keymap = None):
-        chromedriver_plugin_folder = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..',))
-        self.window = WindowXMLDialogActions('control_window.xml', chromedriver_plugin_folder, 'default', parent=self)
+        addon_folder = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..',))
+        self.window = WindowXMLDialogActions('control_window.xml', addon_folder, 'default')
+        # self.window = WindowXMLDialogActions('DialogBusy.xml', addon_folder)
+        self.window.setParent(self)
         self.browser = browser
         self.keymap = DEFAULT_KEYMAP if keymap is None else keymap
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        self.window.close()
 
     def _backgroundJsHandler(self, stopEvt):
         """
@@ -89,15 +107,15 @@ class window(object):
 
     def onAction(self, action):
         action = action.getId() if isinstance(action, xbmcgui.Action) else action
-        action_name, args = self.keymap.get(action, (None, None))
-        if action_name:
-            fn = getattr(self, "action_"+str(action_name), None)
-            if fn is None:
-                fn = getattr(self.browser, "action_"+str(action_name), None)
-            if fn is not None:
-                fn(args)
-            else:
-                log("Action function not availible: " + str(action_name))
+        action_js= self.keymap.get(action, None)
+        if action_js:
+            try:
+                self.browser.executeJavaScript(action_js)
+            except:
+                pass
+            if action_js == js_fn.close():
+                self.window.close()
+
 
     def action_exit(self, *args):
         self.window.close()

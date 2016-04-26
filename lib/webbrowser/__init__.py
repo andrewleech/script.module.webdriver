@@ -41,29 +41,6 @@ elif osLinux64:
 else:
     raise NotImplementedError("Dont' know platform: " % str(sys.platform))
 
-# for fname in os.listdir(chrome_driver_path):
-#     # Add execute permissions
-#     try:
-#         fname = os.path.join(chrome_driver_path, fname)
-#         mode = os.stat(fname).st_mode
-#         mode |= stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
-#         os.chmod(fname, mode)
-#     except OSError:
-#         pass
-
-# def get_ps():
-#     ps = subprocess.check_output(["ps", "-xf"])
-#     pid = None
-#     pslines = ps.splitlines()
-#     ps_entry = namedtuple('ps_entry', pslines[0].strip().split())
-#     ps_entries = [ ]
-#     for line in pslines[1:]:
-#         spline = line.strip().split()
-#         spline = spline[:7] + [" ".join(spline[7:])]
-#         ps_entries.append(ps_entry(*spline))
-#     return ps_entries
-
-
 class Browser(object):
     _browser = None
     def __init__(self):
@@ -81,6 +58,7 @@ class Browser(object):
 
         self._monitoring_target = None
         self._monitoring_parent = None
+        self._controlWindow = None
 
     @property
     def browser(self):
@@ -123,10 +101,13 @@ class Browser(object):
 
                     else:
                         fn = msg['fn']
-                        arg = msg['arg']
+                        arg = msg.get('arg')
 
                         if fn == 'keyDown':
                             sender.send_key({'keyDown':arg})
+                        elif fn == 'close':
+                            if self._controlWindow:
+                                self._controlWindow.close()
                 else:
                     print msg
 
@@ -161,9 +142,12 @@ class Browser(object):
         # blocking
         try:
             import control_window
-            controlWindow = control_window.window(self, keymap)
-            controlWindow.doModal()
-        except ImportError: pass
+            self._controlWindow = control_window.window(self, keymap)
+            self._controlWindow.doModal()
+        except ImportError:
+            pass
+        finally:
+            self._controlWindow = None
 
     def bring_browser_to_front(self):
         # pid = self.pid()
@@ -295,7 +279,7 @@ class Browser(object):
 
     ## Functions for interacting with browser
 
-    def execute_script(self, js_script, timeout=5):
+    def executeJavaScript(self, js_script):
         with self.browser_lock:
             # self.browser.set_script_timeout(timeout)
             result = self._command('executeJavaScript', js_script)
@@ -325,19 +309,19 @@ class Browser(object):
     # def getNoJs(self, url):
     #     with self.browser_lock:
     #         self.browser.set_script_timeout(5)
-    #         result = self.browser.execute_script(js_fn.get_js.format(url))
+    #         result = self.browser.executeJavaScript(js_fn.get_js.format(url))
     #     return result
     #
     # def getMultNoJs(self, urls):
     #     with self.browser_lock:
     #         self.browser.set_script_timeout(5)
-    #         result =  self.browser.execute_script(js_fn.get_multi_js, urls)
+    #         result =  self.browser.executeJavaScript(js_fn.get_multi_js, urls)
     #     return result
     #
     # def postNoJs(self, url, data):
     #     with self.browser_lock:
     #         self.browser.set_script_timeout(5)
-    #         result =  self.browser.execute_script(js_fn.post_js.format(url, data))
+    #         result =  self.browser.executeJavaScript(js_fn.post_js.format(url, data))
     #     return result
 
     def getCookies(self):
@@ -360,7 +344,7 @@ class Browser(object):
     #              'getElementsByClassName' if by == By.CLASS_NAME else \
     #              None
     #         if not jstype: raise NotImplementedError
-    #         result = self.browser.execute_script(js_fn.start_watching_target_keys_js % (jstype, target))
+    #         result = self.browser.executeJavaScript(js_fn.start_watching_target_keys_js % (jstype, target))
     #         if result:
     #             self._monitoring_target = result['target']
     #             self._monitoring_parent = result['parent']
@@ -369,7 +353,7 @@ class Browser(object):
     # def getKeystrokes(self):
     #     with self.browser_lock:
     #         self.browser.set_script_timeout(5)
-    #         keys = self.browser.execute_script(js_fn.get_keys_js)
+    #         keys = self.browser.executeJavaScript(js_fn.get_keys_js)
     #     for key in keys:
     #         key['name'] = js_fn.keycodeToKeyname.get(key['keyCode'], None)
     #     return keys
@@ -389,7 +373,7 @@ class Browser(object):
     #             if not jstype: raise NotImplementedError
     #
     #             #telement = self.browser.find_element(by, target)
-    #             pelement = self.browser.execute_script("var pele = document.%s('%s').parentElement;pele.contentEditable = true;return pele"% (jstype, target))
+    #             pelement = self.browser.executeJavaScript("var pele = document.%s('%s').parentElement;pele.contentEditable = true;return pele"% (jstype, target))
     #             #pelement = telement.find_element_by_xpath('..')
     #
     #             # click_by = By.ID
@@ -399,7 +383,7 @@ class Browser(object):
     #                 # Send key to our target div
     #                 result = pelement.send_keys(key)
     #                 # then re-focus the desired target
-    #                 self.browser.execute_script("document.%s('%s').focus();document.%s('%s').parentElement.contentEditable = false;"% (jstype, target))
+    #                 self.browser.executeJavaScript("document.%s('%s').focus();document.%s('%s').parentElement.contentEditable = false;"% (jstype, target))
     #     return result
 
     def set_keymap(self, keymap):
@@ -427,7 +411,7 @@ class Browser(object):
         #         # Send key to our target div
         #         result = telement.send_keys(key)
         #         # then re-focus the desired target
-        #         # self.browser.execute_script("document.%s('%s').focus();"% (jstype, target))
+        #         # self.browser.executeJavaScript("document.%s('%s').focus();"% (jstype, target))
         return result
 
     # def downloadImage(self, url_filepaths, background):
