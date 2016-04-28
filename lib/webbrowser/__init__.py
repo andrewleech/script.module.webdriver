@@ -150,13 +150,10 @@ class Browser(object):
             self._controlWindow = None
 
     def bring_browser_to_front(self):
-        # pid = self.pid()
-        # self.bring_proc_to_front(pid)
-        self._command('show')
+        # self._command('setFullScreen', True)
+        self._command('showFullScreen')
 
     def send_browser_to_back(self):
-        # pid = os.getpid()
-        # Browser.bring_proc_to_front(pid)
         self._command('hide')
 
     @staticmethod
@@ -276,12 +273,10 @@ class Browser(object):
     #             chrome_pid = line.PID
     #     return int(chrome_pid)
 
-
     ## Functions for interacting with browser
 
     def executeJavaScript(self, js_script):
         with self.browser_lock:
-            # self.browser.set_script_timeout(timeout)
             result = self._command('executeJavaScript', js_script)
         return result
 
@@ -306,24 +301,6 @@ class Browser(object):
             result =  self.browser.post(url, data)
         return result
 
-    # def getNoJs(self, url):
-    #     with self.browser_lock:
-    #         self.browser.set_script_timeout(5)
-    #         result = self.browser.executeJavaScript(js_fn.get_js.format(url))
-    #     return result
-    #
-    # def getMultNoJs(self, urls):
-    #     with self.browser_lock:
-    #         self.browser.set_script_timeout(5)
-    #         result =  self.browser.executeJavaScript(js_fn.get_multi_js, urls)
-    #     return result
-    #
-    # def postNoJs(self, url, data):
-    #     with self.browser_lock:
-    #         self.browser.set_script_timeout(5)
-    #         result =  self.browser.executeJavaScript(js_fn.post_js.format(url, data))
-    #     return result
-
     def getCookies(self):
         with self.browser_lock:
             result = self._command('getCookies')
@@ -334,114 +311,12 @@ class Browser(object):
             result = self._command('setCookies', cookies)
         return result
 
-    # def startMonitoringKeystrokes(self, by, target):
-    #     with self.browser_lock:
-    #         self.browser.set_script_timeout(5)
-    #
-    #         jstype = 'getElementById'     if by == By.ID else \
-    #              'querySelectorAll'       if by == By.CSS_SELECTOR else \
-    #              'getElementsByName'      if by == By.NAME else \
-    #              'getElementsByClassName' if by == By.CLASS_NAME else \
-    #              None
-    #         if not jstype: raise NotImplementedError
-    #         result = self.browser.executeJavaScript(js_fn.start_watching_target_keys_js % (jstype, target))
-    #         if result:
-    #             self._monitoring_target = result['target']
-    #             self._monitoring_parent = result['parent']
-    #     return result
-
-    # def getKeystrokes(self):
-    #     with self.browser_lock:
-    #         self.browser.set_script_timeout(5)
-    #         keys = self.browser.executeJavaScript(js_fn.get_keys_js)
-    #     for key in keys:
-    #         key['name'] = js_fn.keycodeToKeyname.get(key['keyCode'], None)
-    #     return keys
-
-    # def send_keys_to_monitored(self, key):
-    #     # TODO incomplete
-    #     with self.browser_lock:
-    #         result = False
-    #
-    #         if self._monitoring_parent:
-    #             # todo cache these during configuration
-    #             jstype = 'getElementById' if by == By.ID else \
-    #                  'querySelectorAll'   if by == By.CSS_SELECTOR else \
-    #                  'getElementsByName'  if by == By.NAME else \
-    #                  'getElementsByClassName' if by == By.CLASS_NAME else \
-    #                  None
-    #             if not jstype: raise NotImplementedError
-    #
-    #             #telement = self.browser.find_element(by, target)
-    #             pelement = self.browser.executeJavaScript("var pele = document.%s('%s').parentElement;pele.contentEditable = true;return pele"% (jstype, target))
-    #             #pelement = telement.find_element_by_xpath('..')
-    #
-    #             # click_by = By.ID
-    #             # click_target = "kodi_webdriver_keypress_target"
-    #             # click_element = self.browser.find_element(click_by, click_target)
-    #             if pelement:
-    #                 # Send key to our target div
-    #                 result = pelement.send_keys(key)
-    #                 # then re-focus the desired target
-    #                 self.browser.executeJavaScript("document.%s('%s').focus();document.%s('%s').parentElement.contentEditable = false;"% (jstype, target))
-    #     return result
-
     def set_keymap(self, keymap):
         result = self._command('setKeymap', json.dumps(keymap))
 
     def send_keys(self, key, by = None, target = None):
         result = self._command('keyDown', key)
-
-        # target = 'body' if target is None else target
-        # by = By.CSS_SELECTOR if by is None else by
-        # with self.browser_lock:
-        #     result = False
-        #
-        #     # todo cache these during configuration
-        #     jstype = 'getElementById'    if by == By.ID else \
-        #          'querySelectorAll'  if by == By.CSS_SELECTOR else \
-        #          'getElementsByName' if by == By.NAME else \
-        #          'getElementsByClassName' if by == By.CLASS_NAME else \
-        #          None
-        #     if not jstype: raise NotImplementedError
-        #
-        #     telement = self.browser.find_element(by, target)
-        #
-        #     if telement:
-        #         # Send key to our target div
-        #         result = telement.send_keys(key)
-        #         # then re-focus the desired target
-        #         # self.browser.executeJavaScript("document.%s('%s').focus();"% (jstype, target))
         return result
-
-    # def downloadImage(self, url_filepaths, background):
-    #     if background:
-    #         self.background.submit(self.downloadImage, url_filepaths, False)
-    #     else:
-    #         url = "<none>"
-    #         try:
-    #             for url, filepath in url_filepaths:
-    #                 dirname = os.path.dirname(filepath)
-    #                 if not os.path.exists(dirname):
-    #                     os.makedirs(dirname)
-    #
-    #                 use_browser = False
-    #                 if use_browser:
-    #                     with self.browser_lock:
-    #                         self.browser.set_script_timeout(10)
-    #                         link = self.browser.execute_async_script(js_fn.getimg_js.format(url))
-    #                     img = base64.b64decode(link)
-    #                     with open(filepath, 'wb') as filehandle:
-    #                         filehandle.write(img)
-    #                 else:
-    #                     response = requests.get(url, stream=True)
-    #                     if response.status_code == requests.codes.ok:
-    #                         with open(filepath, 'wb') as filehandle:
-    #                             for chunk in response.iter_content(1024):
-    #                                 filehandle.write(chunk)
-    #         except Exception as ex:
-    #             log("Thumbnail download error: %s" % url)
-    #             log("%s" % ex.message)
 
     def downloadImages(self, url_filepaths):
         """
@@ -453,17 +328,6 @@ class Browser(object):
         with self.browser_lock:
             result = self._command('downloadImages', url_filepaths)
 
-        #     self.browser.set_script_timeout(3*len(url_filepaths))
-        #     images = self.browser.execute_async_script(js_fn.getimgs_js, url_filepaths.keys())
-        # if images:
-        #     for url, data in images.iteritems:
-        #         img = base64.b64decode(data)
-        #         filepath = url_filepaths[url]
-        #         with open(filepath, 'wb') as filehandle:
-        #             filehandle.write(img)
-        #
-        # end = time.time()
-        # print "downloadImage: %0.2f" % (end-start)
         return result
 
 def openSettings():
