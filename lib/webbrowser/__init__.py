@@ -4,14 +4,10 @@ import os
 import re
 import imp
 import json
-import base64
-import requests
 import websocket
 import threading
 import send_keys
-from collections import namedtuple
-from Queue import Queue
-
+import xbmcgui
 from concurrent.futures import ThreadPoolExecutor
 from utils import *
 
@@ -30,16 +26,25 @@ resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..
 rcBrowser_address = 'ws://localhost:39682'
 
 basepath = os.path.join(os.path.dirname(__file__),'bin')
-if osWin:
-    rcBrowser_path= os.path.join(basepath,'rcBrowser-win32-x64', 'rcBrowser.exe')
-elif osOSX:
-    rcBrowser_path= os.path.join(basepath,'rcBrowser-darwin-x64', 'rcBrowser.app','Contents','MacOS','rcBrowser')
-elif osLinux32:
-    rcBrowser_path= os.path.join(basepath,'rcBrowser-linux-x32', 'rcBrowser.app')
-elif osLinux64:
-    rcBrowser_path= os.path.join(basepath,'rcBrowser-linux-x64', 'rcBrowser.app')
-else:
-    raise NotImplementedError("Dont' know platform: " % str(sys.platform))
+rcBrowser_path = {
+    Win     : os.path.join(basepath,'rcBrowser-win32-x64', 'rcBrowser.exe'),
+    OSX     : os.path.join(basepath,'rcBrowser-darwin-x64', 'rcBrowser.app','Contents','MacOS','rcBrowser'),
+    Linux32 : os.path.join(basepath,'rcBrowser-linux-x32', 'rcBrowser.app'),
+    Linux64 : os.path.join(basepath,'rcBrowser-linux-x64', 'rcBrowser.app'),
+}[OS]
+
+baseurl = "https://github.com/andrewleech/rcBrowser/releases/download/v1.0-alpha/"
+rcBrowser_url = {
+    Win     : baseurl + "rcBrowser-win32-ia32.tgz",
+    OSX     : baseurl + "rcBrowser-darwin-x64.tgz",
+    Linux32 : baseurl + "rcBrowser-linux-ia32.tgz",
+    Linux64 : baseurl + "rcBrowser-linux-x64.tgz",
+}[OS]
+
+
+
+def translation(id):
+    return addon.getLocalizedString(id).encode('utf-8')
 
 class Browser(object):
     _browser = None
@@ -73,7 +78,8 @@ class Browser(object):
                     self._browser = websocket.create_connection(rcBrowser_address)
                     break
                 except websocket.socket.error as ex:
-                    # TODO check the kind of exception above
+                    if not os.path.exists(rcBrowser_path):
+                        download_rcbrowser()
                     subprocess.Popen([rcBrowser_path], close_fds=True)
                     # TODO check stdout from rcBrowser for a startup/ready declaration before continuing
                     sleep(5)
@@ -329,6 +335,25 @@ class Browser(object):
             result = self._command('downloadImages', url_filepaths)
 
         return result
+
+def download_rcbrowser():
+    pDialog = xbmcgui.DialogProgress()
+    try:
+        pDialog.create('Downloading rcBrowser', translation(31000) + "...")
+        pDialog.update(0, translation(31000) + "...")
+
+        def progress(percent):
+            pDialog.update(round(percent), translation(31000) + "...")
+
+        archive = download_file(rcBrowser_url, basepath, progress)
+        if archive:
+            pDialog.update(100, translation(31000) + "...")
+        folder, _ = extract(archive)
+    except:
+        print("Error downloading rcBrowser")
+    finally:
+        pDialog.close()
+
 
 def openSettings():
     addon.openSettings()
