@@ -6,12 +6,14 @@ import time
 try:
     import xbmc
     sleep = lambda t: xbmc.sleep(int(t*1000))
-    log = lambda text: xbmc.log(text, level=xbmc.LOGDEBUG)
+    log = lambda text: xbmc.log(text)
+    logdebug = lambda text: xbmc.log(text, level=xbmc.LOGDEBUG)
 
 except ImportError: # Not running in xbmc/kodi
     import sys
     sleep = time.sleep
     log = sys.stdout
+    logdebug = sys.stdout
 
 ## Python 2.6 (Kodi on osx) doesn't support subprocess.check_output
 import subprocess
@@ -65,7 +67,7 @@ def download_file(url, dest, progress_callback):
                 file_size_dl += len(block)
                 fp.write(block)
                 if progress_callback:
-                    percent = file_size_dl * 100. / file_size
+                    percent = min(int(file_size_dl * 100. / file_size)+1, 100)
                     progress_callback(percent)
             print(": Done.")
     return file_name
