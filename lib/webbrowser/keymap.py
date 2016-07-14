@@ -24,7 +24,7 @@ import os
 # import traceback
 import xbmc
 import xbmcgui
-# import utils
+import utils
 # from xbmcgui import Dialog
 # from editor import Editor
 # from utils import tr
@@ -38,16 +38,20 @@ userdata = xbmc.translatePath('special://userdata/keymaps')
 keymapentry = namedtuple("keymapentry", ("context", "device", "action", "key"))
 def read_keymap(filename):
     ret = []
-    with open(filename, 'r') as xml:
-        tree = ET.iterparse(xml)
-        for _, keymap in tree:
-            for context in keymap:
-                for device in context:
-                    for mapping in device:
-                        key = mapping.get('id') or mapping.tag
-                        action = mapping.text
-                        if action:
-                            ret.append(keymapentry(context.tag.lower(), device.tag.lower(), action.lower(), key.lower()))
+    try:
+        with open(filename, 'r') as xml:
+            tree = ET.iterparse(xml)
+            for _, keymap in tree:
+                for context in keymap:
+                    for device in context:
+                        for mapping in device:
+                            key = mapping.get('id') or mapping.tag
+                            action = mapping.text
+                            if action:
+                                ret.append(keymapentry(context.tag.lower(), device.tag.lower(), action.lower(), key.lower()))
+    except:
+        xbmc.log("Failed to load keymap: %s" % filename)
+        raise
     return ret
 
 def action_keymap(action_list):
