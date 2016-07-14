@@ -4,6 +4,7 @@ import os
 import re
 import imp
 import json
+import xbmc
 import websocket
 import threading
 import send_keys
@@ -15,7 +16,7 @@ import js_fn
 
 ## Settings
 import xbmcaddon
-addon = xbmcaddon.Addon(id='script.module.webdriver')
+addon = xbmcaddon.Addon(id='script.module.webbrowser')
 debug           = addon.getSetting('debug')
 useKiosk        = addon.getSetting('useKiosk')
 useCustomPath   = addon.getSetting('useCustomPath')
@@ -25,12 +26,13 @@ resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..
 
 rcBrowser_address = 'ws://localhost:39682'
 
-basepath = os.path.join(os.path.dirname(__file__),'bin')
+basepath = xbmc.translatePath(addon.getAddonInfo('profile'))
+
 rcBrowser_path = {
     Win     : os.path.join(basepath,'rcBrowser-win32-x64', 'rcBrowser.exe'),
     OSX     : os.path.join(basepath,'rcBrowser-darwin-x64', 'rcBrowser.app','Contents','MacOS','rcBrowser'),
-    Linux32 : os.path.join(basepath,'rcBrowser-linux-x32', 'rcBrowser.app'),
-    Linux64 : os.path.join(basepath,'rcBrowser-linux-x64', 'rcBrowser.app'),
+    Linux32 : os.path.join(basepath,'rcBrowser-linux-x32', 'rcBrowser'),
+    Linux64 : os.path.join(basepath,'rcBrowser-linux-x64', 'rcBrowser'),
 }[OS]
 
 baseurl = "https://github.com/andrewleech/rcBrowser/releases/download/v1.0-alpha/"
@@ -137,7 +139,7 @@ class Browser(object):
             ret = self.recv_queue.pop(seq).get('arg')
         else:
             print "No Reponse to %s(%s)" % (function, str(argument))
-        ret = None
+            ret = None
         return ret
 
     def close(self):
@@ -284,6 +286,12 @@ class Browser(object):
     def executeJavaScript(self, js_script):
         with self.browser_lock:
             result = self._command('executeJavaScript', js_script)
+            # result = self._command('webContentsJavaScript', 'echo "test";')
+        return result
+
+    def executeJavaScriptOnReady(self, js_script):
+        with self.browser_lock:
+            result = self._command('webContentsJavaScript', js_fn.on_webview_ready_js % js_script)
         return result
 
     def navigateBack(self):
@@ -343,14 +351,14 @@ def download_rcbrowser():
         pDialog.update(0, translation(31000) + "...")
 
         def progress(percent):
-            pDialog.update(round(percent), translation(31000) + "...")
+            pDialog.update(int(percent), translation(31000) + "...")
 
         archive = download_file(rcBrowser_url, basepath, progress)
         if archive:
             pDialog.update(100, translation(31000) + "...")
         folder, _ = extract(archive)
-    except:
-        print("Error downloading rcBrowser")
+    except Exception as ex:
+        utils.log("Error downloading rcBrowser: %s" % ex)
     finally:
         pDialog.close()
 

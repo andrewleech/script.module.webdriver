@@ -189,6 +189,14 @@ for(var i = 0; i < total; i++) {
 }
 """
 
+on_webview_ready_js = '''
+var on_webview_ready_once = function(ev){
+    webview.executeJavaScript('%s');
+    webview.removeEventListener('dom-ready', on_webview_ready_once);
+}
+webview.addEventListener('dom-ready', on_webview_ready_once)
+'''
+
 get_keys_js = "var kodi_retkeys = kodi_keys; kodi_keys = []; return kodi_retkeys;"
 
 def close():
