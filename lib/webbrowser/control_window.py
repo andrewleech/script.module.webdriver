@@ -68,11 +68,6 @@ class window(object):
 
     def close(self):
         self.window.close()
-        if OS == OSX:
-            # Bring kodi back to front
-            script = 'tell application "System Events" to set frontmost of every process whose unix id is %s to true' % os.getpid()
-            # The builtin 'RunAppleScript' is to run a separate script file, not from a string.
-            subprocess.check_call(['/usr/bin/osascript', '-e', script])
 
     def _backgroundJsHandler(self, stopEvt):
         """

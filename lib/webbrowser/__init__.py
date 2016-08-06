@@ -156,6 +156,7 @@ class Browser(object):
             pass
         finally:
             self._controlWindow = None
+            self.bring_proc_to_front(os.getpid())
 
     def bring_browser_to_front(self):
         # self._command('setFullScreen', True)
@@ -166,69 +167,72 @@ class Browser(object):
 
     @staticmethod
     def bring_proc_to_front(pid):
-        if osLinux:
-                # Ensure browser is active window
-            def currentActiveWindowLinux():
-                name = ""
-                try:
-                    # xprop -id $(xprop -root 32x '\t$0' _NET_ACTIVE_WINDOW | cut -f 2) _NET_WM_NAME
-                    current_window_id = check_output(['xprop', '-root', '32x', '\'\t$0\'', '_NET_ACTIVE_WINDOW'])
-                    current_window_id = current_window_id.strip("'").split()[1]
-                    current_window_name = check_output(['xprop', '-id', current_window_id, "WM_NAME"])
-                    if "not found" not in current_window_name and "failed request" not in current_window_name:
-                        current_window_name = current_window_name.strip().split(" = ")[1].strip('"')
-                        name = current_window_name
-                except OSError:
-                    pass
-                return name
+        try:
+            if osLinux:
+                    # Ensure browser is active window
+                def currentActiveWindowLinux():
+                    name = ""
+                    try:
+                        # xprop -id $(xprop -root 32x '\t$0' _NET_ACTIVE_WINDOW | cut -f 2) _NET_WM_NAME
+                        current_window_id = check_output(['xprop', '-root', '32x', '\'\t$0\'', '_NET_ACTIVE_WINDOW'])
+                        current_window_id = current_window_id.strip("'").split()[1]
+                        current_window_name = check_output(['xprop', '-id', current_window_id, "WM_NAME"])
+                        if "not found" not in current_window_name and "failed request" not in current_window_name:
+                            current_window_name = current_window_name.strip().split(" = ")[1].strip('"')
+                            name = current_window_name
+                    except OSError:
+                        pass
+                    return name
 
-            def findWid():
-                wid = None
-                match = re.compile("(0x[0-9A-Fa-f]+)").findall(check_output(['xprop','-root','_NET_CLIENT_LIST']))
-                if match:
-                    for id in match:
-                        try:
-                            wpid = check_output(['xprop','-id',id,'_NET_WM_PID'])
-                            wname = check_output(['xprop','-id',id,'WM_NAME'])
-                            if str(pid) in wpid:
-                                wid = id
-                        except (OSError, subprocess.CalledProcessError): pass
-                return wid
-
-            try:
-                timeout = time.time() + 10
-                while time.time() < timeout:# and "browser" not in currentActiveWindowLinux().lower():
-                    #windows = check_output(['wmctrl', '-l'])
-                    #if "Google Chrome" in windows:
-                    wid = findWid()
-                    if wid:
-                        try:
-                            subprocess.Popen(['wmctrl', '-i', '-a', wid])
-                        except (OSError, subprocess.CalledProcessError):
+                def findWid():
+                    wid = None
+                    match = re.compile("(0x[0-9A-Fa-f]+)").findall(check_output(['xprop','-root','_NET_CLIENT_LIST']))
+                    if match:
+                        for id in match:
                             try:
-                                subprocess.Popen(['xdotool', 'windowactivate', wid])
-                            except (OSError, subprocess.CalledProcessError):
-                                xbmc.log("Please install wmctrl or xdotool")
-                        break
-                    sleep(0.5)
-            except (OSError, subprocess.CalledProcessError):
-                pass
+                                wpid = check_output(['xprop','-id',id,'_NET_WM_PID'])
+                                wname = check_output(['xprop','-id',id,'WM_NAME'])
+                                if str(pid) in wpid:
+                                    wid = id
+                            except (OSError, subprocess.CalledProcessError): pass
+                    return wid
 
-        elif osOSX:
-            timeout = time.time() + 10
-            while time.time() < timeout:
-                sleep(0.5)
-                applescript_switch_browser = """tell application "System Events"
-                        set frontmost of the first process whose unix id is %d to true
-                    end tell""" % pid
                 try:
-                    subprocess.Popen(['osascript', '-e', applescript_switch_browser])
-                    break
-                except subprocess.CalledProcessError:
+                    timeout = time.time() + 10
+                    while time.time() < timeout:# and "browser" not in currentActiveWindowLinux().lower():
+                        #windows = check_output(['wmctrl', '-l'])
+                        #if "Google Chrome" in windows:
+                        wid = findWid()
+                        if wid:
+                            try:
+                                subprocess.Popen(['wmctrl', '-i', '-a', wid])
+                            except (OSError, subprocess.CalledProcessError):
+                                try:
+                                    subprocess.Popen(['xdotool', 'windowactivate', wid])
+                                except (OSError, subprocess.CalledProcessError):
+                                    xbmc.log("Please install wmctrl or xdotool")
+                            break
+                        sleep(0.5)
+                except (OSError, subprocess.CalledProcessError):
                     pass
-        elif osWin:
-            # TODO: find out if this is needed, and if so how to implement
-            pass
+
+            elif osOSX:
+                timeout = time.time() + 10
+                while time.time() < timeout:
+                    sleep(0.5)
+                    applescript_switch_browser = """tell application "System Events"
+                            set frontmost of the first process whose unix id is %d to true
+                        end tell""" % pid
+                    try:
+                        subprocess.Popen(['osascript', '-e', applescript_switch_browser])
+                        break
+                    except subprocess.CalledProcessError:
+                        pass
+            elif osWin:
+                # TODO: find out if this is needed, and if so how to implement
+                pass
+        except:
+            log("bring_proc_to_front failed")
 
     def register_plugin(self, modname, pypath):
         if modname not in self.plugins:
