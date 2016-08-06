@@ -57,7 +57,7 @@ def read_keymap(filename):
 def action_keymap(action_list):
     """
     :param list action_list: list of actions to get keymap for
-    :return: dict of {action : keyCode}
+    :return: dict of {action : [keyCode/s]}
     """
 
     defaultkeymap = read_keymap(default)
@@ -72,28 +72,33 @@ def action_keymap(action_list):
     keymap = defaultdict(f)
     for kmap in keymaps:
         for entry in kmap:
-            keymap[entry.device][entry.context][entry.action] = entry
+            action = keymap[entry.device][entry.context].get(entry.action, [])
+            action.append(entry)
+            keymap[entry.device][entry.context][entry.action] = action
 
-    # keyboard_only = [
-    #     [entry for entry in kmap if entry.device == 'keyboard'] for kmap in keymaps
-    # ]
-    # by_context = [dict([
-    #        (entry.context,entry) for entry in kmap
-    # ]) for kmap in keyboard_only]
-
-    action_map = {}
+    action_map = defaultdict(list)
 
     for action in action_list:
         action_str = Action.get(action)
-        entry = keymap['keyboard']['FullscreenVideo'.lower()].get(action_str,
-                keymap['keyboard']['global'].get(action_str))
-        if entry:
+        entries = keymap['keyboard']['FullscreenVideo'.lower()].get(action_str, []) + \
+                keymap['keyboard']['global'].get(action_str, [])
+        for entry in entries:
             key_string = entry.key.lower()
-            action_map[action] = key_string
+            keys = action_map[action]
+            keys.append(key_string)
 
     return action_map
 
-# keymap string to action map converted from:
+def key_actionmap(action_map):
+    """
+    :param action_map: as returned from action_keymap
+    :return: dict of {keyCode : action}
+    """
+    keymap = [(key, action) for action, keys in action_map.iteritems() for key in keys]
+    return dict(keymap)
+
+
+# keymap string to action map; parsed from:
 # https:#github.com/xbmc/xbmc/blob/de1ae6149b01dba7730b11d4a2f570faaf4127d7/xbmc/input/ButtonTranslator.cpp
 
 ActionMapping = {
