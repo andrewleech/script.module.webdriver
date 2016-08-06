@@ -7,6 +7,7 @@ import xbmcgui
 import xbmcaddon
 
 import send_keys
+import subprocess
 from utils import *
 
 DEFAULT_KEYMAP = {
@@ -67,6 +68,11 @@ class window(object):
 
     def close(self):
         self.window.close()
+        if OS == OSX:
+            # Bring kodi back to front
+            script = 'tell application "System Events" to set frontmost of every process whose unix id is %s to true' % os.getpid()
+            # The builtin 'RunAppleScript' is to run a separate script file, not from a string.
+            subprocess.check_call(['/usr/bin/osascript', '-e', script])
 
     def _backgroundJsHandler(self, stopEvt):
         """
@@ -114,11 +120,11 @@ class window(object):
             except:
                 pass
             if action_js == js_fn.close():
-                self.window.close()
+                self.close()
 
 
     def action_exit(self, *args):
-        self.window.close()
+        self.close()
 
     def action_sendkey(self, *args):
         self.browser.send_keys(*args)
