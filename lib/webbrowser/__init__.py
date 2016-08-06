@@ -27,20 +27,20 @@ resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..
 rcBrowser_address = 'ws://localhost:39682'
 
 basepath = xbmc.translatePath(addon.getAddonInfo('profile'))
-
+rcBrowser_vers = 'v1.0-b2'
 rcBrowser_path = {
-    Win     : os.path.join(basepath,'rcBrowser-win32-x64', 'rcBrowser.exe'),
-    OSX     : os.path.join(basepath,'rcBrowser-darwin-x64', 'rcBrowser.app','Contents','MacOS','rcBrowser'),
-    Linux32 : os.path.join(basepath,'rcBrowser-linux-x32', 'rcBrowser'),
-    Linux64 : os.path.join(basepath,'rcBrowser-linux-x64', 'rcBrowser'),
+    Win     : os.path.join(basepath, rcBrowser_vers,'rcBrowser-win32-x64', 'rcBrowser.exe'),
+    OSX     : os.path.join(basepath, rcBrowser_vers,'rcBrowser-darwin-x64', 'rcBrowser.app','Contents','MacOS','rcBrowser'),
+    Linux32 : os.path.join(basepath, rcBrowser_vers,'rcBrowser-linux-x32', 'rcBrowser'),
+    Linux64 : os.path.join(basepath, rcBrowser_vers,'rcBrowser-linux-x64', 'rcBrowser'),
 }[OS]
 
-baseurl = "https://github.com/andrewleech/rcBrowser/releases/download/v1.0-alpha/"
+baseurl = "https://github.com/andrewleech/rcBrowser/releases/download"
 rcBrowser_url = {
-    Win     : baseurl + "rcBrowser-win32-ia32.tgz",
-    OSX     : baseurl + "rcBrowser-darwin-x64.tgz",
-    Linux32 : baseurl + "rcBrowser-linux-ia32.tgz",
-    Linux64 : baseurl + "rcBrowser-linux-x64.tgz",
+    Win     : '/'.join((baseurl, rcBrowser_vers, "rcBrowser-win32-ia32.tgz")),
+    OSX     : '/'.join((baseurl, rcBrowser_vers, "rcBrowser-darwin-x64.tgz")),
+    Linux32 : '/'.join((baseurl, rcBrowser_vers, "rcBrowser-linux-ia32.tgz")),
+    Linux64 : '/'.join((baseurl, rcBrowser_vers, "rcBrowser-linux-x64.tgz")),
 }[OS]
 
 
@@ -353,7 +353,7 @@ def download_rcbrowser():
         def progress(percent):
             pDialog.update(int(percent), translation(31000) + "...")
 
-        archive = download_file(rcBrowser_url, basepath, progress)
+        archive = download_file(rcBrowser_url, os.path.join(basepath, rcBrowser_vers), progress)
         if archive:
             pDialog.update(100, translation(31000) + "...")
         folder, _ = extract(archive)
