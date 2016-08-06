@@ -6,5 +6,8 @@
     <setting id="useCustomPath" type="bool" label="30010" default="false"/>
     <setting id="customPath" type="file" label="30011" enable="eq(-1,true)" default="special://home/addons/plugin.program.chrome.launcher/browser.sh"/>
 
-    <setting id="handleWM" type="bool" label="30018" enable="System.Platform.Linux" default="false"/>
+    <setting id="useProxy" type="bool" label="30010" default="false"/>
+    <setting id="proxy" type="text" label="30011" enable="eq(-1,true)" default="http://localhost:8080"/>
+
+    <!--<setting id="handleWM" type="bool" label="30018" enable="System.Platform.Linux" default="false"/>-->
 </settings>

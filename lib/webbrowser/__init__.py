@@ -21,6 +21,8 @@ debug           = addon.getSetting('debug')
 useKiosk        = addon.getSetting('useKiosk')
 useCustomPath   = addon.getSetting('useCustomPath')
 customPath      = addon.getSetting('customPath') if useCustomPath == 'true' else None
+useProxy        = addon.getSetting('useProxy') == 'true'
+proxy           = addon.getSetting('proxy') if useProxy else None
 
 resources_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..','resources'))
 
@@ -56,8 +58,7 @@ class Browser(object):
 
         self.plugins = {}
         self.background = ThreadPoolExecutor(max_workers=1)
-        # self.thr = threading.Thread(target=self.recv_queue)
-        # self.thr.daemon = True
+        self._proc = None
 
         if useKiosk:
             print 'TODO: kiosk mode not implemented yet'
@@ -80,9 +81,14 @@ class Browser(object):
                     self._browser = websocket.create_connection(rcBrowser_address)
                     break
                 except websocket.socket.error as ex:
+                    args = []
                     if not os.path.exists(rcBrowser_path):
                         download_rcbrowser()
-                    subprocess.Popen([rcBrowser_path], close_fds=True)
+                    if proxy:
+                        import urlparse
+                        electron_proxy = urlparse.urlparse(proxy).netloc
+                        args += ['--proxy-server=%s' % electron_proxy]
+                    self._proc = subprocess.Popen([rcBrowser_path] + args, close_fds=True)
                     # TODO check stdout from rcBrowser for a startup/ready declaration before continuing
                     sleep(5)
 
@@ -145,6 +151,10 @@ class Browser(object):
     def close(self):
         with self.browser_lock:
             self._command('close')
+
+    def exit(self):
+        if self._proc:
+            self._proc.kill()
 
     def show_control_window(self, keymap = None):
         # blocking
@@ -369,6 +379,7 @@ def download_rcbrowser():
 
 def openSettings():
     addon.openSettings()
+
 
 if __name__ == '__main__':
     # Used for testing outside of kodi
